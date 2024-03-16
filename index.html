@@ -1,8 +1,463 @@
+<!DOCTYPE html>
 <html>
+
 <head>
-<title>ESP8266X2PAV</title>
-<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+	<meta name="viewport" content="width=device-width, initial-scale=1"/>
+	<title>ESP8266X2PAV</title>
+	<style type="text/css">
+body {
+	font-size: large;
+	text-align: center;
+	color: #223;
+	background-color: #dde;
+	margin: 1em auto;
+}
+table {
+	margin: 0em auto;
+	text-align: left;
+}
+input[type="button"], input[type="number"] {
+	font-size: large;
+}
+input[type="radio"] {
+	transform: scale(1.5);
+	margin-right: 1em;
+}
+input[type="number"] {
+	width: 3.5em;
+}
+.tabbox input.div_tab {
+	display: none;
+}
+.tab {
+	display: inline-block;
+	padding: 0em 0.5em;
+}
+input:checked + .tab {
+	color: #eeb;
+	background: #663;
+}
+.tabcontent {
+	display: none;
+}
+#tabcheck1:checked ~ #tabcontent1 {
+	display: block;
+}
+#tabcheck2:checked ~ #tabcontent2 {
+	display: block;
+}
+#tabcheck3:checked ~ #tabcontent3 {
+	display: block;
+}
+table {
+	border-spacing: 0px;
+}
+tr.highlighted, span.highlighted {
+	background: #eeb;
+}
+tr.changed {
+	background: #eab;
+}
+td {
+	padding: 1px 0.25em;
+}
+canvas#canvas_pixels {
+	margin: 24px;
+}
+div#div_palette {
+	font-size: xx-large;
+	line-height: 1em;
+	user-select: none;
+}
+	</style>
+</head>
+
 <body>
-It works!
+
+<h1>ESP8266X2PAV</h1>
+
+<!-- Header -->
+
+<div class="tabbox">
+
+<input type="radio" name="tabset" class="div_tab" id="tabcheck1" checked>
+<label for="tabcheck1" class="tab">Pixel arts</label>
+<input type="radio" name="tabset" class="div_tab" id="tabcheck2">
+<label for="tabcheck2" class="tab">Drawing</label>
+<input type="radio" name="tabset" class="div_tab" id="tabcheck3">
+<label for="tabcheck3" class="tab">Settings</label>
+<hr>
+
+<!-- Tab1: File manager -->
+
+<div class="tabcontent" id="tabcontent1">
+
+<form name="arts">
+	<input type="button" value="Show" id="button_show_art">
+	<input type="button" value="Delete" id="button_delete_art">
+	<template id="template_art">
+		<tr>
+			<td><a target="_blank">&#x1f5bc;</a></td>
+			<td><input type="radio" name="art_name" class="radio_art"><label></label></td>
+		</tr>
+	</template>
+	<table id="table_arts_list">
+	</table>
+</form>
+<form name="upload">
+	<input type="file" accept="image/gif" name="art_upload" id="file_upload_art"><br>
+	<input type="button" value="Upload" id="button_upload_art">
+</form>
+
+</div>
+
+<!-- Tab2: Drawing -->
+
+<div class="tabcontent" id="tabcontent2">
+
+<input type="button" id="button_capture" value="Capture">
+<input type="button" id="button_forward" value="Forward"><br>
+<canvas id="canvas_pixels"></canvas>
+<template id="template_palette"><span>&#9632;</span></template>
+<div id="div_palette">
+</div>
+
+</div>
+
+<!-- Tab3: Settings -->
+
+<div class="tabcontent" id="tabcontent3">
+
+<form name="settings">
+<table>
+	<tr>
+		<td><label for="num_least_duration">Least duration</label></td>
+		<td><input type="number" name="num_least_duration" id="num_least_duration" min="1" max="120" value="15"> secs</td>
+	</tr>
+	<tr>
+		<td><label for="num_least_loop">Least Loop</label></td>
+		<td><input type="number" name="num_least_loop" id="num_least_loop" min="0" max="5" value="2"> times</td>
+	</tr>
+	<tr>
+		<td><label for="num_active_duration">Active duration</label></td>
+		<td><input type="number" name="num_active_duration" id="num_active_duration" min="60" max="3600" step="60" value="300"> secs</td>
+	</tr>
+</table>
+<input type="button" id="button_apply_settings" value="Apply">
+</form>
+
+</div>
+
+<!-- Footer -->
+
+<hr>
+<span id="span_status"></span><br>
+<span id="span_version"></span>
+</div>
+
+<!-- Java Script -->
+
+<script>
+
+const PIXELS_NUM = 16;
+const PIXELS_SIZE = 16;
+
+var pixels;
+var penColor = toRGBString(0, 0, 0);
+var penStroke;
+var isPenDown = false;
+
+getVersion();
+initializeFileManager();
+initializeDrawing();
+initializeSettings();
+
+function callApi(method, path, body, func) {
+	const xhr = new XMLHttpRequest();
+	xhr.open(method, '/api/' + path);
+	xhr.send(body);
+	xhr.onload = () => {
+		if (xhr.status == 200) {
+			func(xhr.response);
+		} else if (xhr.status == 204) {
+			func();
+		} else {
+			const span = document.getElementById('span_status');
+			span.innerText = xhr.response;
+		}
+	};
+}
+
+function getVersion() {
+	callApi('GET', 'version', null, (ret) => {
+		document.getElementById('span_version').innerText = ret;
+	});
+}
+
+function highlightSelected(container, target) {
+	const className = 'highlighted';
+	Array.from(container.children).forEach((element) => {
+		if (element == target) {
+			element.classList.add(className);
+		} else {
+			element.classList.remove(className);
+		}
+	});
+}
+
+/*---------------------------------------------------------------------------*/
+
+function initializeFileManager() {
+	callApi('GET', 'arts', null, (ret) => {
+		if (ret != '') {
+			const list = ret.slice(0, -1).split('\n');
+			list.forEach((name) => addArt(name));
+		}
+	});
+}
+
+function addArt(name) {
+	const table = document.getElementById('table_arts_list');
+	const template = document.getElementById('template_art');
+	const clone = template.content.cloneNode(true);
+	const tr = clone.firstElementChild;
+	tr.id = 'tr_art_' + name;
+	const a = tr.getElementsByTagName('a')[0]
+	const radio = tr.getElementsByTagName('input')[0]
+	const label = tr.getElementsByTagName('label')[0]
+	a.href = '/api/arts/' + name;
+	radio.id = 'radio_art_' + name;
+	radio.value = name;
+	radio.addEventListener('click', () => highlightSelected(table, tr));
+	label.htmlFor = 'radio_art_' + name;
+	label.innerText = name;
+	table.appendChild(clone);
+}
+
+function deleteArt(name) {
+	const tr = document.getElementById('tr_art_' + name);
+	tr.remove();
+}
+
+function clearArts() {
+	const table = document.getElementById('table_arts_list');
+	while (table.firstChild) {
+		table.removeChild(table.firstChild);
+	}
+}
+
+document.getElementById('button_show_art').addEventListener('click', () => {
+	const form = document.forms.arts;
+	const name = form.elements['art_name'].value;
+	if (name != '') {
+		callApi('PUT', 'exec/display/' + name, null, () => {});
+	}
+});
+
+document.getElementById('button_delete_art').addEventListener('click', () => {
+	const form = document.forms.arts;
+	const name = form.elements['art_name'].value;
+	if (name != '' && window.confirm('Are you sure?')) {
+		callApi('DELETE', 'arts/' + name, null, () => deleteArt(name));
+	}
+});
+
+document.getElementById('button_upload_art').addEventListener('click', () => {
+	const form = document.forms.upload;
+	const data = new FormData(form);
+	const file = data.get('art_upload');
+	if (file.name != '' && file.size > 0 && file.type == 'image/gif') {
+		let name = file.name;
+		name = name.substring(0, name.lastIndexOf('.')).toLowerCase();
+		callApi('POST', 'arts', data, () => addArt(name));
+	}
+});
+
+/*---------------------------------------------------------------------------*/
+
+function initializeDrawing() {
+	const canvas = document.getElementById('canvas_pixels');
+	canvas.width = PIXELS_NUM * PIXELS_SIZE;
+	canvas.height = PIXELS_NUM * PIXELS_SIZE;
+	canvas.addEventListener('touchstart', onDownCanvas, false);
+	canvas.addEventListener('touchmove', onMoveCanvas, false);
+	document.addEventListener('touchend', onUpCanvas, false);
+	canvas.addEventListener('mousedown', onDownCanvas, false);
+	canvas.addEventListener('mousemove', onMoveCanvas, false);
+	document.addEventListener('mouseup', onUpCanvas, false);
+
+	pixels = new Array(PIXELS_NUM * PIXELS_NUM);
+	pixels.fill(toRGBString(64, 64, 64));
+	const context = canvas.getContext('2d');
+	context.strokeStyle = toRGBString(192, 192, 192);
+	drawAllPixels();
+
+	const palette = document.getElementById('div_palette');
+	const template = document.getElementById('template_palette');
+	for (let b = 0; b < 3; b++) {
+		for (let g = 0; g < 3; g++) {
+			for (let r = 0; r < 3; r++) {
+				const clone = template.content.cloneNode(true);
+				const span = clone.firstElementChild;
+				let c = toRGBString(r * 128, g * 128, b * 128);
+				span.style.color = c;
+				span.addEventListener('click', onClickPalette);
+				palette.appendChild(clone);
+			}
+		}
+		palette.appendChild(document.createElement('br'));
+	}
+	highlightSelected(palette, palette.firstElementChild);
+}
+
+document.getElementById('button_capture').addEventListener('click', () => {
+	callApi('PUT', 'exec/freeze', null, () => fetchCurrentPixels());
+});
+
+function fetchCurrentPixels() {
+	callApi('GET', 'status/pixels', null, (ret) => {
+		const data = fromB64(ret);
+		for (let i = 0; i < PIXELS_NUM * PIXELS_NUM; i++) {
+			pixels[i] = toRGBString(data[i * 3], data[i * 3 + 1], data[i * 3 + 2]);
+		}
+		drawAllPixels();
+	});
+}
+
+document.getElementById('button_forward').addEventListener('click', () => {
+	callApi('PUT', 'exec/forward_art', null, () => {});
+});
+
+function onClickPalette(event) {
+	let target = event.currentTarget;
+	penColor = target.style.color;
+	highlightSelected(target.parentElement, target);
+}
+
+function onDownCanvas(event) {
+	isPenDown = true;
+	penStroke = [];
+	event = event || window.event;
+	setPixel(event.offsetX, event.offsetY);
+}
+
+function onMoveCanvas(event) {
+	event = event || window.event;
+	if (!isPenDown && (event.buttons & 1)) {
+		onDownCanvas(event);
+	} else if (isPenDown) {
+		setPixel(event.offsetX, event.offsetY);
+	}
+}
+
+function onUpCanvas(event) {
+	if (isPenDown && penStroke.length > 0) {
+		let data = toB64(Uint8Array.from(fromRGBString(penColor).concat(penStroke)));
+		callApi('PUT', 'exec/draw', data, () => {});
+	}
+	isPenDown = false;
+}
+
+function setPixel(x, y) {
+	let dx = ~~(x / PIXELS_SIZE);
+	let dy = ~~(y / PIXELS_SIZE);
+	if (dx >= 0 && dy >= 0 && dx < PIXELS_NUM && dy < PIXELS_NUM) {
+		let idx = dy * PIXELS_NUM + dx;
+		if (pixels[idx] != penColor) {
+			pixels[idx] = penColor;
+			drawPixel(dx, dy, penColor);
+			penStroke.push(idx);
+		}
+	}
+}
+
+function drawAllPixels() {
+	for (let y = 0; y < PIXELS_NUM; y++) {
+		for (let x = 0; x < PIXELS_NUM; x++) {
+			drawPixel(x, y, pixels[y * PIXELS_NUM + x]);
+		}
+	}
+}
+
+function drawPixel(x, y, p) {
+	const canvas = document.getElementById('canvas_pixels');
+	const context = canvas.getContext('2d');
+	let dx = x * PIXELS_SIZE;
+	let dy = y * PIXELS_SIZE;
+	context.strokeRect(dx, dy, PIXELS_SIZE - 1, PIXELS_SIZE - 1);
+	context.fillStyle = p;
+	context.fillRect(dx, dy, PIXELS_SIZE - 1, PIXELS_SIZE - 1);
+}
+
+function toRGBString(r, g, b) {
+	return `rgb(${r},${g},${b})`;
+}
+
+function fromRGBString(c) {
+	parts = c.match(/^rgb\(\s*([0-9]+)\s*,\s*([0-9]+)\s*,\s*([0-9]+)\s*\)$/i);
+	return [parseInt(parts[1]), parseInt(parts[2]), parseInt(parts[3])];
+}
+
+function toB64(data) {
+	const decodeBinaryString = uint8Array => uint8Array.reduce(
+		(binaryString, uint8) => binaryString + String.fromCharCode(uint8),
+		'',
+	);
+	const binaryString = decodeBinaryString(data);
+	return btoa(binaryString);
+}
+
+function fromB64(b64) {
+	const encodeBinaryString = binaryString => Uint8Array.from(
+		binaryString,
+		binaryChar => binaryChar.charCodeAt(0),
+	);
+	const binaryString = atob(b64);
+	return encodeBinaryString(binaryString);
+}
+
+/*---------------------------------------------------------------------------*/
+
+function initializeSettings() {
+	fetchSettingEach('num_least_duration', 'configs/least_duration');
+	fetchSettingEach('num_least_loop', 'configs/least_loop');
+	fetchSettingEach('num_active_duration', 'configs/active_duration');
+}
+
+function fetchSettingEach(id, path) {
+	const elm = document.getElementById(id);
+	callApi('GET', path, null, (ret) => {
+		elm.value = ret;
+		elm.defaltValue = ret;
+	});
+	elm.addEventListener('change', () => {
+		const className = 'changed';
+		const tr = elm.parentElement.parentElement;
+		if (elm.value == elm.defaultValue) {
+			tr.classList.remove(className);
+		} else {
+			tr.classList.add(className);
+		}
+	});
+}
+
+document.getElementById('button_apply_settings').addEventListener('click', () => {
+	applySettingEach('num_least_duration', 'configs/least_duration');
+	applySettingEach('num_least_loop', 'configs/least_loop');
+	applySettingEach('num_active_duration', 'configs/active_duration');
+});
+
+function applySettingEach(id, path) {
+	const elm = document.getElementById(id);
+	if (elm.value != elm.defaultValue) {
+		callApi('PUT', path, elm.value, () => {
+			elm.defaultValue = elm.value;
+			elm.parentElement.parentElement.classList.remove('changed');
+		});
+	}
+}
+</script>
+
 </body>
 </html>

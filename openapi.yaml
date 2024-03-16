@@ -1,0 +1,270 @@
+openapi: '3.0.2'
+
+info:
+  title: ESP8266X2PAV API
+  description: |-
+    This is Web API specification of **ESP8266X2PAV** which is a 16&times;16-dotted pixel art viewer with ESP-WROOM-02 and Unicorn HAT HD.
+  license:
+    name: MIT License
+    url: https://github.com/obono/ESP8266X2PAV/blob/main/LICENSE
+  version: '0.1.0'
+externalDocs:
+  description: GitHub
+  url: https://github.com/obono/ESP8266X2PAV
+servers:
+  - url: http://esp8266x2pav.local:8080/api
+
+paths:
+
+  /arts:
+    get:
+      tags: [ pixel art ]
+      description: Get the name list of pixel arts
+      responses:
+        '200':
+          description: The name list of pixel arts
+          content:
+            plain/text:
+              schema:
+                type: string
+    post:
+      tags: [ pixel art ]
+      description: Upload data of a new pixel art
+      requestBody:
+        description: GIF file to upload
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                filename:
+                  description: The file name
+                  type: string
+                file:
+                  description: The file name
+                  type: object
+      responses:
+        '204':
+          description: Success
+        '400':
+          description: Bad request
+        '413':
+          description: Too Large data
+        '507':
+          description: Storage full
+
+  /arts/{name}:
+    get:
+      tags: [ pixel art ]
+      description: Get data of a pixel art
+      parameters:
+        - in: path
+          name: name
+          required: true
+          description: The name of pixel art
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Data of a pixel art
+          content:
+            image/gif:
+              schema:
+                type: object
+        '404':
+          description: Not found
+    delete:
+      tags: [ pixel art ]
+      description: Delete a pixel art
+      parameters:
+        - in: path
+          name: name
+          required: true
+          description: The name of pixel art
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Success
+        '404':
+          description: Not found
+
+  /exec/display/{name}:
+    put:
+      tags: [ execution ]
+      description: Display a pixel art
+      parameters:
+        - in: path
+          name: name
+          required: true
+          description: The name of pixel art
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Success
+        '404':
+          description: Not found
+
+  /exec/forward_art:
+    put:
+      tags: [ execution ]
+      description: Forward to next pixel art
+      responses:
+        '204':
+          description: Success
+
+  /exec/freeze:
+    put:
+      tags: [ execution ]
+      description: Freeze the display
+      responses:
+        '204':
+          description: Success
+
+  /exec/draw:
+    put:
+      tags: [ execution ]
+      description: Draw pixels on the display
+      requestBody:
+        description: Draw
+        required: true
+        content:
+          plain/text:
+            schema:
+              type: string
+      responses:
+        '204':
+          description: Success
+        '400':
+          description: Bad request
+        '403':
+          description: Forbidden
+
+  /exec/clear:
+    put:
+      tags: [ execution ]
+      description: Clear the display
+      responses:
+        '204':
+          description: Success
+
+  /configs/least_duration:
+    get:
+      tags: [ configuration ]
+      description: Get the least duration
+      responses:
+        '200':
+          description: The least duration (secs)
+          content:
+            plain/text:
+              schema:
+                type: integer
+    put:
+      tags: [ configuration ]
+      description: Set the least duration
+      requestBody:
+        description: The least duration (1~120)
+        required: true
+        content:
+          plain/text:
+            schema:
+              type: integer
+      responses:
+        '204':
+          description: Success
+        '400':
+          description: Bad request
+
+  /configs/least_loop:
+    get:
+      tags: [ configuration ]
+      description: Get the least loop times
+      responses:
+        '200':
+          description: The least loop times
+          content:
+            plain/text:
+              schema:
+                type: integer
+    put:
+      tags: [ configuration ]
+      description: Set the least loop times
+      requestBody:
+        description: The least loop times (0~5)
+        required: true
+        content:
+          plain/text:
+            schema:
+              type: integer
+      responses:
+        '204':
+          description: Success
+        '400':
+          description: Bad request
+
+  /configs/active_duration:
+    get:
+      tags: [ configuration ]
+      description: Get the active duration
+      responses:
+        '200':
+          description: The active duration (secs)
+          content:
+            plain/text:
+              schema:
+                type: integer
+    put:
+      tags: [ configuration ]
+      description: Set the active duration
+      requestBody:
+        description: The active duration (60~3600)
+        required: true
+        content:
+          plain/text:
+            schema:
+              type: integer
+      responses:
+        '204':
+          description: Success
+        '400':
+          description: Bad request
+
+  /status/current_art:
+    get:
+      tags: [ status ]
+      description: Get the name of current displayed pixel art
+      responses:
+        '200':
+          description: The name of pixel art
+          content:
+            plain/text:
+              schema:
+                type: string
+
+  /status/pixels:
+    get:
+      tags: [ status ]
+      description: Get the pixels data of current displayed image
+      responses:
+        '200':
+          description: The pixels data
+          content:
+            plain/text:
+              schema:
+                type: string
+        '403':
+          description: Forbidden
+
+  /version:
+    get:
+      tags: [ others ]
+      description: Get the firmware version
+      responses:
+        '200':
+          description: The firmware version
+          content:
+            plain/text:
+              schema:
+                type: string

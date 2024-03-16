@@ -4,7 +4,7 @@
 
 /*  Defines  */
 
-#define BUTTON_PIN      4
+#define BUTTON_PIN  4
 
 /*  Global Variables  */
 
@@ -22,7 +22,8 @@ void setup(void)
 #ifdef DEBUG
     Serial.begin(74880);
 #endif
-    dprintln(F("\r\n### ESP8266X2PAV ###"));
+    dprintln();
+    dprintln(F("### ESP8266X2PAV ###"));
     dprintln(F("Version: " BUILD_INFO));
     pinMode(BUTTON_PIN, INPUT);
     lastButtonState = digitalRead(BUTTON_PIN);
@@ -63,7 +64,7 @@ void loop(void)
     int buttonState = digitalRead(BUTTON_PIN);
     if (buttonState != lastButtonState) {
         if (buttonState == LOW) {
-            // do something
+            controller.forwardArt();
         }
         lastButtonState = buttonState;
     }

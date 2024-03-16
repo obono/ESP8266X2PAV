@@ -11,7 +11,7 @@
 
 #define DEBUG
 
-#define BUILD_VERSION   "0.0.1"
+#define BUILD_VERSION   "0.0.2"
 #define BUILD_DATETIME  __DATE__ " " __TIME__
 #ifdef DEBUG
 #define BUILD_INFO      BUILD_VERSION "-debug (" BUILD_DATETIME ")"
@@ -29,9 +29,12 @@ typedef unsigned long ulong;
     ".global " #sym "\n"                    \
     #sym ":\n"                              \
     ".incbin \"" file "\"\n"                \
-    "nop\n"                                 \
+    ".byte 0\n"                             \
+    ".global _sizeof_" #sym "\n"            \
     ".set _sizeof_" #sym ", . - " #sym "\n" \
     ".balign 4\n")
+
+#define isAfter(a, b)   ((long)(a - b) >= 0)
 
 #ifdef DEBUG
 #define dprint(...)     Serial.print(__VA_ARGS__)
