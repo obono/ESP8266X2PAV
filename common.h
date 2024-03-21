@@ -11,13 +11,16 @@
 
 #define DEBUG
 
-#define BUILD_VERSION   "0.0.2"
+#define BUILD_VERSION   "0.0.3"
 #define BUILD_DATETIME  __DATE__ " " __TIME__
 #ifdef DEBUG
 #define BUILD_INFO      BUILD_VERSION "-debug (" BUILD_DATETIME ")"
 #else
 #define BUILD_INFO      BUILD_VERSION "(" BUILD_DATETIME ")"
 #endif
+
+#define PIXELS_NUM      16
+#define RENDER_SIZE_MAX 32
 
 /*  Typedefs  */
 

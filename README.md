@@ -21,11 +21,11 @@ A 16&times;16-dotted pixel art viewer with **ESP-WROOM-02** and **Unicorn HAT HD
 
 ### Build and transfer
 
-Clone the source code and open the project file "ESP8266SmartRemocon.ino" with Arduino IDE.
+Clone the source code and open the project file "ESP8266X2PAV.ino" with Arduino IDE.
 
-You must import ESP8266 board.
+You must import [ESP8266 board](https://github.com/esp8266/Arduino?tab=readme-ov-file#installing-with-boards-manager).
 
-You must modify ["credential.h"](credential.h) according to your situation.
+Also, you must modify ["credential.h"](credential.h) according to your situation.
 
 * `HOSTNAME` and `PORT` if you like.
     * The URL to get version information will be http://esp8266x2pav.local:8080/version if you don't modify.
@@ -57,6 +57,10 @@ MMU              |32KB cache + 32KB IRAM (balanced)
 Non-32-Bit Access|Use pgm_read macros for IRAM/PROGMEM
 
 Then, you can transfer the firmware binary data to ESP-WROOM-02 by any means.
+
+### Acknowledgement
+
+* [gifdec](https://github.com/lecram/gifdec)
 
 ### License
 

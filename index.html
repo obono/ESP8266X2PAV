@@ -5,6 +5,7 @@
 	<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
 	<meta name="viewport" content="width=device-width, initial-scale=1"/>
 	<title>ESP8266X2PAV</title>
+	<link rel="shortcut icon" href="data:image/x-icon;base64,AAABAAEAEBAAAAEABAAoAQAAFgAAACgAAAAQAAAAIAAAAAEABAAAAAAAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/AIDg/0CAsP/AkED//6AA/wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAFEQQBAQBASIUABEkRBIQEQNDEBQEEBEiEAQQFDQQEQAUQxEgQBAQAAAAAAAAAAAERBEUQxEgAAQEEAQEEBAAA0MhJEQREAAEBAAUABAAAAREESNAIQAAARFEMQAAAAABAABBEgAAAAESNDEBAAAAAQBAAQEAAAABETRBEgAABg1QAABgAAAJCSAAAMggAAYCoAAP//AADAAwAA00sAAMADAADWbwAAwCcAAMB/AADeHwAAwF8AANtfAADAHwAA">
 	<style type="text/css">
 body {
 	font-size: large;
@@ -117,6 +118,7 @@ div#div_palette {
 <div class="tabcontent" id="tabcontent2">
 
 <input type="button" id="button_capture" value="Capture">
+<input type="button" id="button_clear" value="Clear">
 <input type="button" id="button_forward" value="Forward"><br>
 <canvas id="canvas_pixels"></canvas>
 <template id="template_palette"><span>&#9632;</span></template>
@@ -166,7 +168,9 @@ const PIXELS_SIZE = 16;
 var pixels;
 var penColor = toRGBString(0, 0, 0);
 var penStroke;
+var isCanvasEnabled;
 var isPenDown = false;
+var timer = null;
 
 getVersion();
 initializeFileManager();
@@ -183,10 +187,22 @@ function callApi(method, path, body, func) {
 		} else if (xhr.status == 204) {
 			func();
 		} else {
-			const span = document.getElementById('span_status');
-			span.innerText = xhr.response;
+			setMessage(xhr.response, 'red');
 		}
 	};
+}
+
+function setMessage(text, color) {
+	const span = document.getElementById('span_status');
+	span.style.color = color;
+	span.innerText = text;
+	if (timer) {
+		clearTimeout(timer);
+	}
+	timer = setTimeout(() => {
+		timer = null;
+		span.innerText = '';
+	}, 2000);
 }
 
 function getVersion() {
@@ -251,7 +267,10 @@ document.getElementById('button_show_art').addEventListener('click', () => {
 	const form = document.forms.arts;
 	const name = form.elements['art_name'].value;
 	if (name != '') {
-		callApi('PUT', 'exec/display/' + name, null, () => {});
+		callApi('PUT', 'exec/display/' + name, null, () => {
+			setMessage('Succeeded', 'green');
+			disableCanvas();
+		});
 	}
 });
 
@@ -259,7 +278,10 @@ document.getElementById('button_delete_art').addEventListener('click', () => {
 	const form = document.forms.arts;
 	const name = form.elements['art_name'].value;
 	if (name != '' && window.confirm('Are you sure?')) {
-		callApi('DELETE', 'arts/' + name, null, () => deleteArt(name));
+		callApi('DELETE', 'arts/' + name, null, () => {
+			setMessage('Deleted', 'green');
+			deleteArt(name);
+		});
 	}
 });
 
@@ -268,9 +290,15 @@ document.getElementById('button_upload_art').addEventListener('click', () => {
 	const data = new FormData(form);
 	const file = data.get('art_upload');
 	if (file.name != '' && file.size > 0 && file.type == 'image/gif') {
+		setMessage('Uploading...', 'olive');
 		let name = file.name;
 		name = name.substring(0, name.lastIndexOf('.')).toLowerCase();
-		callApi('POST', 'arts', data, () => addArt(name));
+		callApi('POST', 'arts', data, () => {
+			setMessage('Uploaded', 'green');
+			addArt(name);
+		});
+	} else {
+		setMessage('Invalid file', 'red');
 	}
 });
 
@@ -280,18 +308,18 @@ function initializeDrawing() {
 	const canvas = document.getElementById('canvas_pixels');
 	canvas.width = PIXELS_NUM * PIXELS_SIZE;
 	canvas.height = PIXELS_NUM * PIXELS_SIZE;
-	canvas.addEventListener('touchstart', onDownCanvas, false);
-	canvas.addEventListener('touchmove', onMoveCanvas, false);
-	document.addEventListener('touchend', onUpCanvas, false);
 	canvas.addEventListener('mousedown', onDownCanvas, false);
 	canvas.addEventListener('mousemove', onMoveCanvas, false);
 	document.addEventListener('mouseup', onUpCanvas, false);
+	canvas.addEventListener('touchstart', onTouchCanvas, false);
+	canvas.addEventListener('touchmove', onTouchCanvas, false);
+	document.addEventListener('touchend', onUpCanvas, false);
 
 	pixels = new Array(PIXELS_NUM * PIXELS_NUM);
 	pixels.fill(toRGBString(64, 64, 64));
 	const context = canvas.getContext('2d');
-	context.strokeStyle = toRGBString(192, 192, 192);
-	drawAllPixels();
+	context.strokeStyle = toRGBString(64, 64, 64);
+	disableCanvas();
 
 	const palette = document.getElementById('div_palette');
 	const template = document.getElementById('template_palette');
@@ -312,10 +340,16 @@ function initializeDrawing() {
 }
 
 document.getElementById('button_capture').addEventListener('click', () => {
-	callApi('PUT', 'exec/freeze', null, () => fetchCurrentPixels());
+	callApi('PUT', 'exec/freeze', null, () => fetchCurrentPixels(true));
 });
 
-function fetchCurrentPixels() {
+document.getElementById('button_clear').addEventListener('click', () => {
+	callApi('PUT', 'exec/clear', null, () => fetchCurrentPixels(false));
+});
+
+function fetchCurrentPixels(isCaptured) {
+	setMessage((isCaptured) ? 'Captured' : 'Cleared', 'green');
+	isCanvasEnabled = true;
 	callApi('GET', 'status/pixels', null, (ret) => {
 		const data = fromB64(ret);
 		for (let i = 0; i < PIXELS_NUM * PIXELS_NUM; i++) {
@@ -326,7 +360,7 @@ function fetchCurrentPixels() {
 }
 
 document.getElementById('button_forward').addEventListener('click', () => {
-	callApi('PUT', 'exec/forward_art', null, () => {});
+	callApi('PUT', 'exec/forward_art', null, () => { disableCanvas(); });
 });
 
 function onClickPalette(event) {
@@ -335,26 +369,44 @@ function onClickPalette(event) {
 	highlightSelected(target.parentElement, target);
 }
 
-function onDownCanvas(event) {
-	isPenDown = true;
-	penStroke = [];
-	event = event || window.event;
-	setPixel(event.offsetX, event.offsetY);
+function onTouchCanvas(event) {
+	let dummyEvent = {};
+	dummyEvent.offsetX = event.touches[0].pageX - event.target.getBoundingClientRect().left;
+	dummyEvent.offsetY = event.touches[0].pageY - event.target.getBoundingClientRect().top;
+	dummyEvent.buttons = 1;
+	onMoveCanvas(dummyEvent);
+	if (isPenDown) {
+		event.preventDefault();
+		event.stopPropagation();
+	}
 }
 
-function onMoveCanvas(event) {
-	event = event || window.event;
-	if (!isPenDown && (event.buttons & 1)) {
-		onDownCanvas(event);
-	} else if (isPenDown) {
+function onDownCanvas(event) {
+	if (isCanvasEnabled) {
+		isPenDown = true;
+		penStroke = [];
+		event = event || window.event;
 		setPixel(event.offsetX, event.offsetY);
 	}
 }
 
+function onMoveCanvas(event) {
+	if (isCanvasEnabled) {
+		event = event || window.event;
+		if (!isPenDown && (event.buttons & 1)) {
+			onDownCanvas(event);
+		} else if (isPenDown) {
+			setPixel(event.offsetX, event.offsetY);
+		}
+	}
+}
+
 function onUpCanvas(event) {
-	if (isPenDown && penStroke.length > 0) {
-		let data = toB64(Uint8Array.from(fromRGBString(penColor).concat(penStroke)));
-		callApi('PUT', 'exec/draw', data, () => {});
+	if (isCanvasEnabled) {
+		if (isPenDown && penStroke.length > 0) {
+			let data = toB64(Uint8Array.from(fromRGBString(penColor).concat(penStroke)));
+			callApi('PUT', 'exec/draw', data, () => {});
+		}
 	}
 	isPenDown = false;
 }
@@ -370,6 +422,20 @@ function setPixel(x, y) {
 			penStroke.push(idx);
 		}
 	}
+}
+
+function disableCanvas() {
+	isCanvasEnabled = false;
+	const canvas = document.getElementById('canvas_pixels');
+	const context = canvas.getContext('2d');
+	let w = PIXELS_NUM * PIXELS_SIZE;
+	let h = PIXELS_NUM * PIXELS_SIZE;
+	context.clearRect(0, 0, w, h);
+	context.strokeRect(0, 0, w, h);
+	context.beginPath();
+	context.moveTo(w, 0);
+	context.lineTo(0, h);
+	context.stroke();
 }
 
 function drawAllPixels() {
@@ -449,6 +515,7 @@ document.getElementById('button_apply_settings').addEventListener('click', () =>
 });
 
 function applySettingEach(id, path) {
+	setMessage('Applying...', 'olive');
 	const elm = document.getElementById(id);
 	if (elm.value != elm.defaultValue) {
 		callApi('PUT', path, elm.value, () => {

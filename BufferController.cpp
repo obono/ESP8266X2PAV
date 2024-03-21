@@ -1,4 +1,5 @@
 #include "BufferController.h"
+#include "gifdec.h"
 
 #include <SPI.h>
 
@@ -19,15 +20,12 @@ public:
         SPI.begin();
     }
 
-    void transferFrameBuffer(uint8_t *frameBuffer, uint8_t brightness)
+    void transferFrameBuffer(uint8_t *pBuffer)
     {
-        if (brightness > BRIGHTNESS_MAX) brightness = BRIGHTNESS_MAX;
         SPI.beginTransaction(mySPISettings);
         digitalWrite(SPI_CS_PIN, LOW);
         SPI.transfer(COMMAND_SOF);
-        for (uint8_t *p = frameBuffer; p < frameBuffer + width * height * 3; p++) {
-            SPI.transfer(*p * brightness / BRIGHTNESS_MAX);
-        }
+        SPI.transferBytes(pBuffer, NULL, width * height * 3);
         digitalWrite(SPI_CS_PIN, HIGH);
         SPI.endTransaction();
     }
@@ -52,7 +50,6 @@ public:
 private:
     static const uint8_t    SPI_CS_PIN = 5;
     static const uint8_t    COMMAND_SOF = 0x72;
-    static const uint8_t    BRIGHTNESS_MAX = 100;
 
     const SPISettings   mySPISettings;
     const uint8_t       width, height;
@@ -61,9 +58,6 @@ private:
 /*---------------------------------------------------------------------------*/
 
 /*  Defines  */
-
-#define PIXELS_NUM      16
-#define LOOP_INTERVAL   200UL
 
 /*  Typedefs  */
 typedef struct {
@@ -76,20 +70,21 @@ typedef struct {
 
 static void wakeUp(bool isRefresh);
 static void sleep(void);
-static void openFile(String& name);
+static void openFile(String &name);
+static void closeFile(void);
 static void openByIndex(uint16_t index);
 static void updateFrame(void);
 
 /*  Local Variables  */
 
 static UnicornHatHD hat(PIXELS_NUM, PIXELS_NUM);
+static gd_GIF*      pGif;
 static CONFIG_T     config;
 
 static String   currentName;
 static ulong    targetFrameTime, targetLeastTime, targetActiveTime;
 static uint16_t currentIndex, currentFrame, currentLoop;
 static uint8_t  buffer[PIXELS_NUM * PIXELS_NUM * 3];
-static uint8_t  tempR, tempG, tempB;
 static bool     isActive, isSequencial, isSleep;
 
 /*---------------------------------------------------------------------------*/
@@ -100,6 +95,7 @@ BufferController::BufferController()
 
 void BufferController::setup(void)
 {
+    pGif = NULL;
     config.leastDuration = 15;
     config.leastLoop = 2;
     config.activeDuration = 300;
@@ -117,14 +113,7 @@ void BufferController::loop(void)
     if (isAfter(now, targetActiveTime)) {
         sleep();
     } else if (isActive) {
-        if (isAfter(now, targetFrameTime)) {
-            if (++currentFrame >= 32) {
-                currentFrame = 0;
-                currentLoop++;
-            }
-            updateFrame();
-            targetFrameTime = now + LOOP_INTERVAL;
-        }
+        if (isAfter(now, targetFrameTime)) updateFrame();
         if (isSequencial && isAfter(now, targetLeastTime) && currentLoop >= config.leastLoop) {
             openByIndex(currentIndex + 1);
         } 
@@ -168,14 +157,14 @@ void BufferController::freeze(void)
     isActive = false;
 }
 
-void BufferController::draw(uint8_t* pData, uint16_t size)
+void BufferController::draw(uint8_t *pData, uint16_t size)
 {
     if (isActive || size < 3) return;
     wakeUp(false);
     for (uint16_t i = 3; i < size; i++) {
         memcpy(&buffer[pData[i] * 3], pData, 3);
     }
-    hat.transferFrameBuffer(buffer, 100);
+    hat.transferFrameBuffer(buffer);
 }
 
 void BufferController::clear(void)
@@ -183,7 +172,7 @@ void BufferController::clear(void)
     wakeUp(false);
     isActive = false;
     memset(buffer, 128, sizeof(buffer));
-    hat.transferFrameBuffer(buffer, 100);
+    hat.transferFrameBuffer(buffer);
 }
 
 /*---------------------------------------------------------------------------*/
@@ -253,7 +242,7 @@ static void wakeUp(bool isRefresh)
     dprintln(F("#wake up"));
     if (isSleep) {
         hat.init();
-        if (isRefresh) hat.transferFrameBuffer(buffer, 100);
+        if (isRefresh) hat.transferFrameBuffer(buffer);
         isSleep = false;
     }
     isSleep = false;
@@ -272,18 +261,34 @@ static void openFile(String& name)
 {
     dprint(F("#open "));
     dprintln(name);
-    // TODO: Open the pixel art
+    closeFile(); 
+    pGif = gd_open_gif(("/" + name).c_str());
+    if (!pGif) {
+        dprintln(F("#failed!"));
+        currentName = "";
+        isActive = false;
+        isSleep = false;
+        targetFrameTime = targetActiveTime;
+        // TODO: Indicate failed
+        return;
+    }
+
     currentName = name;
     currentFrame = 0;
     currentLoop = 0;
     isActive = true;
     isSleep = false;
-    updateFrame();
-    targetFrameTime = millis() + LOOP_INTERVAL;
     targetLeastTime = millis() + config.leastDuration * 1000UL;
-    tempR = random(9);
-    tempG = random(9);
-    tempB = random(9);
+    updateFrame();
+}
+
+static void closeFile(void)
+{
+    if (pGif) {
+        dprintln(F("#close"));
+        gd_close_gif(pGif);
+        pGif = NULL;
+    }
 }
 
 static void openByIndex(uint16_t index)
@@ -294,7 +299,7 @@ static void openByIndex(uint16_t index)
     while (dir.next()) {
         isEmpty = false;
         if (counter == 0 || counter == index) {
-            currentName = dir.fileName();
+            currentName = dir.fileName().substring(1);
             currentIndex = counter;
             if (counter == index) break;
         }
@@ -307,20 +312,48 @@ static void openByIndex(uint16_t index)
         isActive = false;
         isSleep = false;
         // TODO: Indicate empty
-    } else {
-        dprint(F("#index = "));
-        dprintln(currentIndex);
-        isSequencial = true;
-        openFile(currentName);
+        return;
     }
+
+    dprint(F("#index = "));
+    dprintln(currentIndex);
+    isSequencial = true;
+    openFile(currentName);
 }
 
 static void updateFrame(void)
 {
-    for (uint16_t i = 0; i < PIXELS_NUM * PIXELS_NUM; i++) {
-        buffer[i * 3]     = tempR * currentFrame + random(8);
-        buffer[i * 3 + 1] = tempG * currentFrame + random(8);
-        buffer[i * 3 + 2] = tempB * currentFrame + random(8);
+    if (pGif) {
+        while (!gd_get_frame(pGif)) {
+            currentLoop++;
+            if (currentLoop != pGif->loop_count) {
+                dprintln(F("#rewind"));
+                gd_rewind(pGif);
+            } else {
+                closeFile();
+                if (currentLoop < config.leastLoop) currentLoop = config.leastLoop;
+                targetFrameTime = (isSequencial) ? targetLeastTime : targetActiveTime;
+                return;
+            }
+        }
+        uint8_t work[pGif->width * pGif->height * 3];
+        uint8_t *p = buffer, *pBGColor = &pGif->palette->colors[pGif->bgindex * 3];
+        int8_t xOffset = (pGif->width - PIXELS_NUM) / 2, yOffset = (pGif->height - PIXELS_NUM) / 2;
+        gd_render_frame(pGif, work);
+        for (int8_t y = yOffset; y < PIXELS_NUM + yOffset; y++) {
+            for (int8_t x = xOffset; x < PIXELS_NUM + xOffset; x++) {
+                if (x >= 0 && y >= 0 && x < pGif->width && y < pGif->height) {
+                    memcpy(p, &work[(y * pGif->width + x) * 3], 3);
+                } else {
+                    memcpy(p, pBGColor, 3);
+                }
+                p += 3;
+            }
+        }
+        hat.transferFrameBuffer(buffer);
+        targetFrameTime = millis() + pGif->gce.delay * 10UL;
+    } else {
+        dprintln(F("#nop"));
+        targetFrameTime = (isSequencial) ? targetLeastTime : targetActiveTime;
     }
-    hat.transferFrameBuffer(buffer, 100);
 }

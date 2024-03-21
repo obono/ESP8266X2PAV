@@ -55,7 +55,7 @@ static void handleGetCurrentArt(void);
 static void handleGetPixels(void);
 static void handleGetVersion(void);
 
-static uint16_t decodeB64(String b64, uint8_t* pData, uint16_t maxLength);
+static uint16_t decodeB64(String b64, uint8_t *pData, uint16_t maxLength);
 
 /*  Local Functions (Macros)  */
 
@@ -71,11 +71,13 @@ static ESP8266WebServer         httpServer(PORT);
 static ESP8266HTTPUpdateServer  httpUpdater;
 
 static ulong targetTime;
+static bool isInitialized;
 
 /*---------------------------------------------------------------------------*/
 
 MyWebServer::MyWebServer()
 {
+    isInitialized = false;
 }
 
 void MyWebServer::setup(void)
@@ -110,11 +112,12 @@ void MyWebServer::setup(void)
     dprintf("http://%s.local:%d/\r\n", HOSTNAME, PORT);
 
     targetTime = millis();
+    isInitialized = true;
 }
 
 void MyWebServer::loop(void)
 {
-    if (isAfter(millis(), targetTime)) {
+    if (isInitialized && isAfter(millis(), targetTime)) {
         httpServer.handleClient();
         MDNS.update();
         targetTime += LOOP_INTERVAL;
@@ -123,7 +126,7 @@ void MyWebServer::loop(void)
 
 ulong MyWebServer::getTargetTime(void)
 {
-    return targetTime;
+    return (isInitialized) ? targetTime : ULONG_MAX;
 }
 
 /*---------------------------------------------------------------------------*/
@@ -194,7 +197,7 @@ static void handleUploadArt(void)
 {
     dprintln(F("handleUploadArt"));
     static File uploadFile;
-    HTTPUpload& upload = httpServer.upload();
+    HTTPUpload &upload = httpServer.upload();
     if (upload.status == UPLOAD_FILE_START) {
         FSInfo info;
         if (!SPIFFS.info(info)) {
@@ -386,7 +389,7 @@ static void handleGetPixels(void)
         responseForbidden();
     } else {
         uint16_t size;
-        uint8_t* pBuffer = controller.getBuffer(size);
+        uint8_t *pBuffer = controller.getBuffer(size);
         httpServer.send(200, F(MIMETYPE_TEXT), base64::encode(pBuffer, size, false));
     }
 }
@@ -399,7 +402,7 @@ static void handleGetVersion(void)
 
 /*---------------------------------------------------------------------------*/
 
-static uint16_t decodeB64(String b64, uint8_t* pData, uint16_t maxLength)
+static uint16_t decodeB64(String b64, uint8_t *pData, uint16_t maxLength)
 {
     uint16_t length = 0, value = 0;
     uint8_t bits = 0;
