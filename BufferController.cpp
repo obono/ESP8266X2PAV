@@ -1,6 +1,7 @@
 #include "BufferController.h"
 #include "gifdec.h"
 
+#include <EEPROM.h>
 #include <SPI.h>
 
 /*---------------------------------------------------------------------------*/
@@ -59,6 +60,8 @@ private:
 
 /*  Defines  */
 
+#define SLEEPING_LOOP_INTERVAL  500UL
+
 /*  Typedefs  */
 typedef struct {
     uint16_t    leastDuration;
@@ -68,24 +71,44 @@ typedef struct {
 
 /*  Local Functions  */
 
+static void readConfig(void);
+static void writeConfig(void);
 static void wakeUp(bool isRefresh);
 static void sleep(void);
 static void openFile(String &name);
 static void closeFile(void);
 static void openByIndex(uint16_t index);
 static void updateFrame(void);
+static void displayConstBitmap(const uint16_t *pBitmap, uint8_t r, uint8_t g, uint8_t b);
+
+/*  Local Constants  */
+
+static uint16_t bitmapBooting[] = {
+    0x0000, 0x18C7, 0x2529, 0x2527, 0x2529, 0x2529, 0x18C7, 0x0000,
+    0x64AF, 0x95A2, 0x16A2, 0xD4A2, 0x94A2, 0x64A2, 0x0000, 0x0000,
+};
+
+static uint16_t bitmapError[] = {
+    0x0000, 0x1CEF, 0x2521, 0x2527, 0x1CE1, 0x14A1, 0x252F, 0x0000,
+    0x7300, 0x9480, 0x9480, 0x7480, 0x5480, 0x9300, 0x0000, 0x0000,
+};
+
+static uint16_t bitmapNoFile[] = {
+    0x00C9, 0x012B, 0x012D, 0x0129, 0x0129, 0x00C9, 0x0000, 0x0000,
+    0x0000, 0xF0AF, 0x10A1, 0x70A7, 0x10A1, 0x10A1, 0xF7A1, 0x0000,
+};
 
 /*  Local Variables  */
 
 static UnicornHatHD hat(PIXELS_NUM, PIXELS_NUM);
-static gd_GIF*      pGif;
+static gd_GIF       *pGif;
 static CONFIG_T     config;
 
 static String   currentName;
 static ulong    targetFrameTime, targetLeastTime, targetActiveTime;
-static uint16_t currentIndex, currentFrame, currentLoop;
+static uint16_t currentIndex, currentLoop;
 static uint8_t  buffer[PIXELS_NUM * PIXELS_NUM * 3];
-static bool     isActive, isSequencial, isSleep;
+static bool     isActive, isSequencial, isSleep, isConfigDirty;
 
 /*---------------------------------------------------------------------------*/
 
@@ -95,14 +118,14 @@ BufferController::BufferController()
 
 void BufferController::setup(void)
 {
+    readConfig();
     pGif = NULL;
-    config.leastDuration = 15;
-    config.leastLoop = 2;
-    config.activeDuration = 300;
-
+    currentIndex = 0;
     isSleep = true;
+    isActive = false;
     wakeUp(false);
-    openByIndex(0);
+    displayConstBitmap(bitmapBooting, 0, 127, 255);
+    hat.transferFrameBuffer(buffer);
 }
 
 void BufferController::loop(void)
@@ -111,10 +134,12 @@ void BufferController::loop(void)
 
     ulong now = millis();
     if (isAfter(now, targetActiveTime)) {
+        writeConfig();
         sleep();
     } else if (isActive) {
         if (isAfter(now, targetFrameTime)) updateFrame();
         if (isSequencial && isAfter(now, targetLeastTime) && currentLoop >= config.leastLoop) {
+            writeConfig();
             openByIndex(currentIndex + 1);
         } 
     }
@@ -122,7 +147,7 @@ void BufferController::loop(void)
 
 ulong BufferController::getTargetTime(void)
 {
-    if (isSleep) return millis() + 1000UL; // TODO
+    if (isSleep) return millis() + SLEEPING_LOOP_INTERVAL;
 
     if (isAfter(targetActiveTime, targetLeastTime)) {
         return (isAfter(targetFrameTime, targetLeastTime)) ? targetLeastTime : targetFrameTime;
@@ -135,6 +160,7 @@ ulong BufferController::getTargetTime(void)
 
 bool BufferController::displayArtByName(String& name)
 {
+    writeConfig();
     if (name.length() > 0 && SPIFFS.exists("/" + name)) {
         wakeUp(false);
         isSequencial = false;
@@ -147,6 +173,7 @@ bool BufferController::displayArtByName(String& name)
 
 void BufferController::forwardArt(void)
 {
+    writeConfig();
     if (!isSleep && isActive && isSequencial) currentIndex++;
     wakeUp(false);
     openByIndex(currentIndex);
@@ -187,8 +214,11 @@ void BufferController::setLeastDuration(uint16_t duration)
     dprint(F("#least duration = "));
     dprintln(duration);
     long diff = (duration - config.leastDuration) * 1000U;
-    targetLeastTime += diff;
-    config.leastDuration = duration;
+    if (diff) {
+        targetLeastTime += diff;
+        config.leastDuration = duration;
+        isConfigDirty = true;
+    }
 }
 
 uint16_t BufferController::getLeastLoop(void)
@@ -200,7 +230,10 @@ void BufferController::setLeastLoop(uint16_t loop)
 {
     dprint(F("#least loop = "));
     dprintln(loop);
-    config.leastLoop = loop;
+    if (config.leastLoop != loop) {
+        config.leastLoop = loop;
+        isConfigDirty = true;
+    }
 }
 
 uint16_t BufferController::getActiveDuration(void)
@@ -213,8 +246,11 @@ void BufferController::setActiveDuration(uint16_t duration)
     dprint(F("#active duration = "));
     dprintln(duration);
     long diff = (duration - config.activeDuration) * 1000U;
-    targetActiveTime += diff;
-    config.activeDuration = duration;
+    if (diff) {
+        targetActiveTime += diff;
+        config.activeDuration = duration;
+        isConfigDirty = true;
+    }
 }
 
 /*---------------------------------------------------------------------------*/
@@ -236,6 +272,31 @@ uint8_t* BufferController::getBuffer(uint16_t& size)
 }
 
 /*---------------------------------------------------------------------------*/
+
+static void readConfig(void)
+{
+    EEPROM.begin(sizeof(config));
+    EEPROM.get(0, config);
+    if (config.leastDuration < CONFIG_LEAST_DURATION_MIN || config.leastDuration > CONFIG_LEAST_DURATION_MAX) {
+        config.leastDuration = CONFIG_LEAST_DURATION_DEFAULT;
+    }
+    if (config.leastLoop < CONFIG_LEAST_LOOP_MIN || config.leastLoop > CONFIG_LEAST_LOOP_MAX) {
+        config.leastLoop = CONFIG_LEAST_LOOP_DEFAULT;
+    }
+    if (config.activeDuration < CONFIG_ACTIVE_DURATION_MIN || config.activeDuration > CONFIG_ACTIVE_DURATION_MAX) {
+        config.activeDuration = CONFIG_ACTIVE_DURATION_DEFAULT;
+    }
+    isConfigDirty = false;
+}
+
+static void writeConfig(void)
+{
+    if (isConfigDirty) {
+        EEPROM.put(0, config);
+        EEPROM.commit();
+        isConfigDirty = false;
+    }
+}
 
 static void wakeUp(bool isRefresh)
 {
@@ -259,22 +320,15 @@ static void sleep(void)
 
 static void openFile(String& name)
 {
+    closeFile(); 
     dprint(F("#open "));
     dprintln(name);
-    closeFile(); 
     pGif = gd_open_gif(("/" + name).c_str());
     if (!pGif) {
         dprintln(F("#failed!"));
-        currentName = "";
-        isActive = false;
-        isSleep = false;
-        targetFrameTime = targetActiveTime;
-        // TODO: Indicate failed
-        return;
+        displayConstBitmap(bitmapError, 255, 31, 127);
     }
-
     currentName = name;
-    currentFrame = 0;
     currentLoop = 0;
     isActive = true;
     isSleep = false;
@@ -311,7 +365,8 @@ static void openByIndex(uint16_t index)
         currentIndex = 0;
         isActive = false;
         isSleep = false;
-        // TODO: Indicate empty
+        displayConstBitmap(bitmapNoFile, 255, 191, 95);
+        hat.transferFrameBuffer(buffer);
         return;
     }
 
@@ -324,16 +379,24 @@ static void openByIndex(uint16_t index)
 static void updateFrame(void)
 {
     if (pGif) {
-        while (!gd_get_frame(pGif)) {
-            currentLoop++;
-            if (currentLoop != pGif->loop_count) {
-                dprintln(F("#rewind"));
-                gd_rewind(pGif);
-            } else {
+        int8_t ret;
+        while ((ret = gd_get_frame(pGif)) != 1) {
+            if (ret == -1) {
+                dprintln(F("#frame error!"));
                 closeFile();
-                if (currentLoop < config.leastLoop) currentLoop = config.leastLoop;
-                targetFrameTime = (isSequencial) ? targetLeastTime : targetActiveTime;
-                return;
+                displayConstBitmap(bitmapError, 255, 63, 0);
+                hat.transferFrameBuffer(buffer);
+                goto finished;
+            } else if (ret == 0) {
+                currentLoop++;
+                if (pGif->loop_count == 0 || currentLoop < pGif->loop_count) {
+                    dprintln(F("#rewind"));
+                    gd_rewind(pGif);
+                } else {
+                    dprintln(F("#finished"));
+                    closeFile();
+                    goto finished;
+                }
             }
         }
         uint8_t work[pGif->width * pGif->height * 3];
@@ -352,8 +415,30 @@ static void updateFrame(void)
         }
         hat.transferFrameBuffer(buffer);
         targetFrameTime = millis() + pGif->gce.delay * 10UL;
-    } else {
-        dprintln(F("#nop"));
-        targetFrameTime = (isSequencial) ? targetLeastTime : targetActiveTime;
+        return; // usual case
     }
+
+    dprintln(F("#nop"));
+finished:
+    currentLoop = UINT16_MAX;
+    targetFrameTime = (isSequencial) ? targetLeastTime : targetActiveTime;
+}
+
+static void displayConstBitmap(const uint16_t *pBitmap, uint8_t r, uint8_t g, uint8_t b)
+{
+    uint8_t color[3] =  { r,      g,      b      };
+    uint8_t forth[3] =  { r >> 2, g >> 2, b >> 2 };
+    for (uint16_t i = 0; i < PIXELS_NUM * PIXELS_NUM; i++) {
+        memcpy(&buffer[i * 3], forth, 3);
+    }
+    for (uint8_t y = 0; y < PIXELS_NUM; y++) {
+        uint16_t pattern = pgm_read_word(&pBitmap[y]);
+        for (uint8_t x = 0; x < PIXELS_NUM; x++) {
+            if (bitRead(pattern, x)) {
+                memcpy(&buffer[(y * PIXELS_NUM + x) * 3], color, 3);
+                if (y < PIXELS_NUM - 1) memset(&buffer[((y + 1) * PIXELS_NUM + x) * 3], 0, 3);
+            }
+        }
+    }
+    hat.transferFrameBuffer(buffer);
 }

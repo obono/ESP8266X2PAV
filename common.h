@@ -9,18 +9,28 @@
 
 /*  Defines  */
 
-#define DEBUG
+//#define DEBUG
 
-#define BUILD_VERSION   "0.0.3"
+#define BUILD_VERSION   "0.0.4"
 #define BUILD_DATETIME  __DATE__ " " __TIME__
 #ifdef DEBUG
 #define BUILD_INFO      BUILD_VERSION "-debug (" BUILD_DATETIME ")"
 #else
-#define BUILD_INFO      BUILD_VERSION "(" BUILD_DATETIME ")"
+#define BUILD_INFO      BUILD_VERSION " (" BUILD_DATETIME ")"
 #endif
 
 #define PIXELS_NUM      16
 #define RENDER_SIZE_MAX 32
+
+#define CONFIG_LEAST_DURATION_MIN       1
+#define CONFIG_LEAST_DURATION_MAX       120
+#define CONFIG_LEAST_DURATION_DEFAULT   15
+#define CONFIG_LEAST_LOOP_MIN           0
+#define CONFIG_LEAST_LOOP_MAX           5
+#define CONFIG_LEAST_LOOP_DEFAULT       2
+#define CONFIG_ACTIVE_DURATION_MIN      60
+#define CONFIG_ACTIVE_DURATION_MAX      3600
+#define CONFIG_ACTIVE_DURATION_DEFAULT  300
 
 /*  Typedefs  */
 

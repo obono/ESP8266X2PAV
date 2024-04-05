@@ -34,10 +34,12 @@ input[type="number"] {
 .tab {
 	display: inline-block;
 	padding: 0em 0.5em;
+	cursor: pointer;
 }
 input:checked + .tab {
 	color: #eeb;
 	background: #663;
+	cursor: default;
 }
 .tabcontent {
 	display: none;
@@ -62,6 +64,9 @@ tr.changed {
 }
 td {
 	padding: 1px 0.25em;
+}
+td a {
+	text-decoration: none;
 }
 canvas#canvas_pixels {
 	margin: 24px;
@@ -99,7 +104,7 @@ div#div_palette {
 	<input type="button" value="Delete" id="button_delete_art">
 	<template id="template_art">
 		<tr>
-			<td><a target="_blank">&#x1f5bc;</a></td>
+			<td><a target="_blank">&#x1f50d;</a></td>
 			<td><input type="radio" name="art_name" class="radio_art"><label></label></td>
 		</tr>
 	</template>
@@ -207,7 +212,7 @@ function setMessage(text, color) {
 
 function getVersion() {
 	callApi('GET', 'version', null, (ret) => {
-		document.getElementById('span_version').innerText = ret;
+		document.getElementById('span_version').innerText = 'Version: ' + ret;
 	});
 }
 
@@ -295,6 +300,7 @@ document.getElementById('button_upload_art').addEventListener('click', () => {
 		name = name.substring(0, name.lastIndexOf('.')).toLowerCase();
 		callApi('POST', 'arts', data, () => {
 			setMessage('Uploaded', 'green');
+			document.getElementById('file_upload_art').value = ''
 			addArt(name);
 		});
 	} else {

@@ -28,6 +28,7 @@ void setup(void)
     pinMode(BUTTON_PIN, INPUT);
     lastButtonState = digitalRead(BUTTON_PIN);
     SPIFFS.begin();
+    controller.setup();
 
     /*  Connect to Access Point  */
     if (lastButtonState == HIGH) { // not pressed
@@ -55,7 +56,7 @@ void setup(void)
         dprintln(F("Stand alone mode."));
     }
 
-    controller.setup();
+    controller.forwardArt();
 }
 
 void loop(void)

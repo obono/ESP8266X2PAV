@@ -10,7 +10,9 @@ IMPORT_BIN_FILE("index.html", dataIndexHtml);
 
 /*  Defines  */
 
+#define FILE_SIZE_MAX       65536UL
 #define LOOP_INTERVAL       100UL
+#define IDLING_INTERVAL     500UL
 
 #define MIMETYPE_TEXT       "text/plain"
 #define MIMETYPE_HTML       "text/html"
@@ -26,6 +28,7 @@ static void responseNone(void);
 static void responseBadRequest(void);
 static void responseForbidden(void);
 static void responseNotFound(void);
+static void responseConflict(void);
 static void responseTooLarge(void);
 static void responseError(void);
 static void responseStorageFull(void);
@@ -77,6 +80,7 @@ static bool isInitialized;
 
 MyWebServer::MyWebServer()
 {
+    wifi_set_sleep_type(LIGHT_SLEEP_T);
     isInitialized = false;
 }
 
@@ -126,7 +130,7 @@ void MyWebServer::loop(void)
 
 ulong MyWebServer::getTargetTime(void)
 {
-    return (isInitialized) ? targetTime : ULONG_MAX;
+    return (isInitialized) ? targetTime : (millis() + IDLING_INTERVAL);
 }
 
 /*---------------------------------------------------------------------------*/
@@ -149,6 +153,11 @@ static void responseForbidden(void)
 static void responseNotFound(void)
 {
     httpServer.send_P(404, PGM_PF(MIMETYPE_TEXT), PGM_PF("404 Not Found"));
+}
+
+static void responseConflict(void)
+{
+    httpServer.send_P(409, PGM_PF(MIMETYPE_TEXT), PGM_PF("409 Conflict"));
 }
 
 static void responseTooLarge(void)
@@ -204,7 +213,7 @@ static void handleUploadArt(void)
             responseError();
             return;
         }
-        if (upload.contentLength > 65536) {
+        if (upload.contentLength > FILE_SIZE_MAX) {
             responseTooLarge();
             return;
         }
@@ -228,7 +237,10 @@ static void handleUploadArt(void)
                 return;
             }
         }
-        if (SPIFFS.exists(fsPath)) SPIFFS.remove(fsPath);
+        if (SPIFFS.exists(fsPath)) {
+            responseConflict();
+            return;
+        }
         uploadFile = SPIFFS.open(fsPath, "w");
         if (!uploadFile) {
             responseError();
@@ -330,7 +342,7 @@ static void handlePutLeastDuration(void)
 {
     dprintln(F("handlePutLeastDuration"));
     long duration = httpServer.arg(F("plain")).toInt();
-    if (duration >= 1 && duration <= 120) {
+    if (duration >= CONFIG_LEAST_DURATION_MIN && duration <= CONFIG_LEAST_DURATION_MAX) {
         controller.setLeastDuration(duration);
         responseNone();
     } else {
@@ -348,7 +360,7 @@ static void handlePutLeastLoop(void)
 {
     dprintln(F("handlePutLeastLoop"));
     long loop = httpServer.arg(F("plain")).toInt();
-    if (loop >= 0 && loop <= 5) {
+    if (loop >= CONFIG_LEAST_LOOP_MIN && loop <= CONFIG_LEAST_LOOP_MAX) {
         controller.setLeastLoop(loop);
         responseNone();
     } else {
@@ -366,7 +378,7 @@ static void handlePutActiveDuration(void)
 {
     dprintln(F("handlePutActiveDuration"));
     long duration = httpServer.arg(F("plain")).toInt();
-    if (duration >= 60 && duration <= 3600) {
+    if (duration >= CONFIG_ACTIVE_DURATION_MIN && duration <= CONFIG_ACTIVE_DURATION_MAX) {
         controller.setActiveDuration(duration);
         responseNone();
     } else {
