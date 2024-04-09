@@ -1,21 +1,48 @@
 # ESP8266X2PAV (ESP8266 Hexadeca-Squared Pixel Art Viewer)
 
-## Description
+![Movie](doc/movie.gif)
 
 A 16&times;16-dotted pixel art viewer with **ESP-WROOM-02** and **Unicorn HAT HD**.
 
-## Hardware
+## Instruction
 
-:construction:
+This device can display images from GIF files.
+Animated GIFs are also supported.
+
+A web application is provided. You can access http://esp8266x2pav.local:8080/ (as default) with a web browser and upload your GIF file.
+Both the width and the height of the image must be within 32 pixels, and the file size must be within 64KiB.
+The image is cropped if its width or height is over 16 pixels.
+
+[![Click to expand](doc/picture1_thumbnail.jpg)](doc/picture1.jpg)
+
+The next image will be displayed automatically after the specified duration has elapsed (and after the specified loop times in the case of animation GIF).
+Moreover, you can force to display the next image by pressing the button.
+
+It goes to sleep mode after the specified duration has elapsed and be resumed by pressing the button.
+
+## Web API specification
+
+[Here is the Web API specification](doc/webapi_spec.html) generated from ["openapi.yaml"](openapi.yaml).
+
+## Hardware
 
 ### Components
 
-* [ESP-WROOM-02](https://store.arduino.cc/usa/arduino-nano) (or compatible product)
+* [ESP-WROOM-02](http://akizukidenshi.com/catalog/g/gM-09607/)
 * [Unicorn HAT HD](https://shop.pimoroni.com/products/unicorn-hat-hd)
+* LDO module (3.3V): [M-3V3SIP](https://www.aitendo.com/product/13061)
+* Resistors: 10k&ohm;&times;6
+* Wires, connectors, switches, etc...
 
-### Circuit diagram
+### Schematic
 
-:construction:
+[![Click to expand](doc/schematic_thumbnail.png)](doc/schematic.png)
+
+### Example
+
+[![Click to expand](doc/picture2_thumbnail.jpg)](doc/picture2.jpg)
+[![Click to expand](doc/picture3_thumbnail.jpg)](doc/picture3.jpg)
+[![Click to expand](doc/picture4_thumbnail.jpg)](doc/picture4.jpg)
 
 ## Software
 
@@ -61,6 +88,7 @@ Then, you can transfer the firmware binary data to ESP-WROOM-02 by any means.
 ### Acknowledgement
 
 * [gifdec](https://github.com/lecram/gifdec)
+* [swagger-codegen](https://github.com/swagger-api/swagger-codegen)
 
 ### License
 

@@ -67,7 +67,7 @@ paths:
             type: string
       responses:
         '200':
-          description: Data of a pixel art
+          description: GIF-formatted raw binary data of a pixel art
           content:
             image/gif:
               schema:
@@ -128,7 +128,10 @@ paths:
       tags: [ execution ]
       description: Draw pixels on the display
       requestBody:
-        description: Draw
+        description: |-
+          Base64 encoded binary data of the drawing instruction
+          * Byte 1~3: The color information (R, G, B).
+          * Byte 4~: The position to draw pixel (lower 4 bits for X, upper 4 bits for Y).
         required: true
         content:
           plain/text:
@@ -249,7 +252,10 @@ paths:
       description: Get the pixels data of current displayed image
       responses:
         '200':
-          description: The pixels data
+          description: |-
+            Base64 encoded binary data of the pixels
+            * It's concatenated pixels starting in the upper left corner, going from left to right, and then row by row going to lower.
+            * Each pixel consists of 3 bytes (R, G, B), therefore it's always 768 bytes.
           content:
             plain/text:
               schema:

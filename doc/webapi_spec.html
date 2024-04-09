@@ -1,0 +1,484 @@
+<!doctype html>
+<html>
+  <head>
+    <title>ESP8266X2PAV API</title>
+    <style type="text/css">
+      body {
+        color: #223;
+        background-color: #dde;
+      }
+      h5 {
+        font-size: 1em;
+        font-weight: normal;
+        font-style: italic;
+      }
+      h5[class*=" response-2"] {
+        color: green;
+      }
+      h5[class*=" response-4"], h5[class*=" response-5"] {
+        color: red;
+      }
+      .app-desc {
+        clear: both;
+        margin-left: 20px;
+      }
+      .param-name {
+        width: 100%;
+      }
+      .license-info {
+        margin-left: 20px;
+      }
+      .model {
+        margin: 0 0 0px 20px;
+      }
+      .method {
+        margin-left: 20px;
+      }
+      .method-notes {
+        font-size: large;
+        margin: 10px 0;
+      }
+      pre {
+        padding: 10px;
+        margin-bottom: 2px;
+      }
+      .http-method {
+       text-transform: uppercase;
+      }
+      pre.get {
+        background-color: #17b;
+      }
+      pre.post {
+        background-color: #1a5;
+      }
+      pre.put {
+        background-color: #c83;
+      }
+      pre.delete {
+        background-color: #a22;
+      }
+      .huge {
+        color: #fff;
+      }
+      pre.example {
+        background-color: #eee;
+        padding: 10px;
+        border: 1px solid #ddd;
+      }
+      code {
+        font-family: Consolas, monospace;
+        white-space: pre;
+      }
+      .nickname {
+        font-weight: bold;
+      }
+      .method-path {
+        font-size: x-large;
+        font-weight: bold;
+      }
+      .up {
+        text-decoration: none;
+        float:right;
+      }
+      .param {
+        color: #337;
+        padding: 10px 0 0 20px;
+        font-weight: bold;
+      }
+      .param-desc, .response-desc {
+        padding: 0 0 0 20px;
+      }
+      .param-type {
+        font-style: italic;
+      }
+      .param-enum-header {
+        padding: 0 0 0 60px;
+        font-weight: bold;
+      }
+      .param-enum {
+        padding: 0 0 0 80px;
+        font-style: italic;
+      }
+      .field-label {
+        color: #55a;
+        padding: 0;
+        margin: 0;
+        clear: both;
+      }
+      .field-items {
+        padding: 0 0 15px 0;
+        margin-bottom: 15px;
+      }
+      .consume-content-type, .produce-content-type, .return-type {
+        clear: both;
+        padding-bottom: 10px;
+      }
+      .param-header {
+        font-weight: bold;
+      }
+      .method-tags {
+        text-align: right;
+      }
+      .method-tag {
+        background: none repeat scroll 0% 0% #2a0;
+        border-radius: 3px;
+        padding: 2px 10px;
+        margin: 2px;
+        color: #fff;
+        display: inline-block;
+        text-decoration: none;
+      }
+    </style>
+  </head>
+  <body>
+  <h1>ESP8266X2PAV API</h1>
+    <div class="app-desc">This is Web API specification of <strong>ESP8266X2PAV</strong> which is a 16×16-dotted pixel art viewer with ESP-WROOM-02 and Unicorn HAT HD.</div>
+    <div class="app-desc">Version: 0.1.0</div>
+    <div class="app-desc">BasePath: http://esp8266x2pav.local:8080/api</div>
+    <div class="license-info">License: <a href="https://github.com/obono/ESP8266X2PAV/blob/main/LICENSE" target="_blank">MIT License</a></div>
+  <hr/>
+
+  <h2><a name="__Methods">Methods</a></h2>
+  <h3>Table of Contents </h3>
+  <div class="method-summary"></div>
+  <h4><a href="#Configuration">Configuration</a></h4>
+  <ul>
+  <li><a href="#configsActiveDurationGet"><code><span class="http-method">get</span> /configs/active_duration</code></a></li>
+  <li><a href="#configsActiveDurationPut"><code><span class="http-method">put</span> /configs/active_duration</code></a></li>
+  <li><a href="#configsLeastDurationGet"><code><span class="http-method">get</span> /configs/least_duration</code></a></li>
+  <li><a href="#configsLeastDurationPut"><code><span class="http-method">put</span> /configs/least_duration</code></a></li>
+  <li><a href="#configsLeastLoopGet"><code><span class="http-method">get</span> /configs/least_loop</code></a></li>
+  <li><a href="#configsLeastLoopPut"><code><span class="http-method">put</span> /configs/least_loop</code></a></li>
+  </ul>
+  <h4><a href="#Execution">Execution</a></h4>
+  <ul>
+  <li><a href="#execClearPut"><code><span class="http-method">put</span> /exec/clear</code></a></li>
+  <li><a href="#execDisplayNamePut"><code><span class="http-method">put</span> /exec/display/{name}</code></a></li>
+  <li><a href="#execDrawPut"><code><span class="http-method">put</span> /exec/draw</code></a></li>
+  <li><a href="#execForwardArtPut"><code><span class="http-method">put</span> /exec/forward_art</code></a></li>
+  <li><a href="#execFreezePut"><code><span class="http-method">put</span> /exec/freeze</code></a></li>
+  </ul>
+  <h4><a href="#Others">Others</a></h4>
+  <ul>
+  <li><a href="#versionGet"><code><span class="http-method">get</span> /version</code></a></li>
+  </ul>
+  <h4><a href="#PixelArt">PixelArt</a></h4>
+  <ul>
+  <li><a href="#artsGet"><code><span class="http-method">get</span> /arts</code></a></li>
+  <li><a href="#artsNameDelete"><code><span class="http-method">delete</span> /arts/{name}</code></a></li>
+  <li><a href="#artsNameGet"><code><span class="http-method">get</span> /arts/{name}</code></a></li>
+  <li><a href="#artsPost"><code><span class="http-method">post</span> /arts</code></a></li>
+  </ul>
+  <h4><a href="#Status">Status</a></h4>
+  <ul>
+  <li><a href="#statusCurrentArtGet"><code><span class="http-method">get</span> /status/current_art</code></a></li>
+  <li><a href="#statusPixelsGet"><code><span class="http-method">get</span> /status/pixels</code></a></li>
+  </ul>
+  <hr/>
+
+  <h3><a name="Configuration">Configuration</a></h3>
+  <div class="method"><a name="configsActiveDurationGet"/>
+    <div class="method-path">
+    <a class="up" href="#__Methods">&xutri;</a>
+    <pre class="get"><code class="huge"><span class="http-method">get</span> /configs/active_duration</code></pre></div>
+    <div class="method-notes">Get the active duration</div>
+    <h4 class="field-label">Produces</h4>
+    <div class="produce-content-type">plain/text</div>
+    <h4 class="field-label">Return type</h4>
+    <div class="return-type">Integer</div>
+    <h4 class="field-label">Responses</h4>
+    <h5 class="field-label response-200">200</h5>
+    <div class="response-desc">The active duration (secs) <a href="#Integer">Integer</a></div>
+  </div>
+  <hr/>
+  <div class="method"><a name="configsActiveDurationPut"/>
+    <div class="method-path">
+    <a class="up" href="#__Methods">&xutri;</a>
+    <pre class="put"><code class="huge"><span class="http-method">put</span> /configs/active_duration</code></pre></div>
+    <div class="method-notes">Set the active duration</div>
+    <h4 class="field-label">Consumes</h4>
+    <div class="produce-content-type">plain/text</div>
+    <h4 class="field-label">Request body</h4>
+    <div class="field-items">
+      <div class="param">body <a href="#integer">integer</a> (required)</div>
+      <div class="param-desc"><span class="param-type">Body Parameter</span> &mdash; The active duration (60~3600)</div>
+    </div>
+    <h4 class="field-label">Responses</h4>
+    <h5 class="field-label response-204">204</h5>
+    <div class="response-desc">Success <a href="#"></a></div>
+    <h5 class="field-label response-400">400</h5>
+    <div class="response-desc">Bad request <a href="#"></a></div>
+  </div>
+  <hr/>
+  <div class="method"><a name="configsLeastDurationGet"/>
+    <div class="method-path">
+    <a class="up" href="#__Methods">&xutri;</a>
+    <pre class="get"><code class="huge"><span class="http-method">get</span> /configs/least_duration</code></pre></div>
+    <div class="method-notes">Get the least duration</div>
+    <h4 class="field-label">Produces</h4>
+    <div class="produce-content-type">plain/text</div>
+    <h4 class="field-label">Return type</h4>
+    <div class="return-type">Integer</div>
+    <h4 class="field-label">Responses</h4>
+    <h5 class="field-label response-200">200</h5>
+    <div class="response-desc">The least duration (secs) <a href="#Integer">Integer</a></div>
+  </div>
+  <hr/>
+  <div class="method"><a name="configsLeastDurationPut"/>
+    <div class="method-path">
+    <a class="up" href="#__Methods">&xutri;</a>
+    <pre class="put"><code class="huge"><span class="http-method">put</span> /configs/least_duration</code></pre></div>
+    <div class="method-notes">Set the least duration</div>
+    <h4 class="field-label">Consumes</h4>
+    <div class="produce-content-type">plain/text</div>
+    <h4 class="field-label">Request body</h4>
+    <div class="field-items">
+      <div class="param">body <a href="#integer">integer</a> (required)</div>
+      <div class="param-desc"><span class="param-type">Body Parameter</span> &mdash; The least duration (1~120)</div>
+    </div>
+    <h4 class="field-label">Responses</h4>
+    <h5 class="field-label response-204">204</h5>
+    <div class="response-desc">Success <a href="#"></a></div>
+    <h5 class="field-label response-400">400</h5>
+    <div class="response-desc">Bad request <a href="#"></a></div>
+  </div>
+  <hr/>
+  <div class="method"><a name="configsLeastLoopGet"/>
+    <div class="method-path">
+    <a class="up" href="#__Methods">&xutri;</a>
+    <pre class="get"><code class="huge"><span class="http-method">get</span> /configs/least_loop</code></pre></div>
+    <div class="method-notes">Get the least loop times</div>
+    <h4 class="field-label">Produces</h4>
+    <div class="produce-content-type">plain/text</div>
+    <h4 class="field-label">Return type</h4>
+    <div class="return-type">Integer</div>
+    <h4 class="field-label">Responses</h4>
+    <h5 class="field-label response-200">200</h5>
+    <div class="response-desc">The least loop times <a href="#Integer">Integer</a></div>
+  </div>
+  <hr/>
+  <div class="method"><a name="configsLeastLoopPut"/>
+    <div class="method-path">
+    <a class="up" href="#__Methods">&xutri;</a>
+    <pre class="put"><code class="huge"><span class="http-method">put</span> /configs/least_loop</code></pre></div>
+    <div class="method-notes">Set the least loop times</div>
+    <h4 class="field-label">Consumes</h4>
+    <div class="produce-content-type">plain/text</div>
+    <h4 class="field-label">Request body</h4>
+    <div class="field-items">
+      <div class="param">body <a href="#integer">integer</a> (required)</div>
+      <div class="param-desc"><span class="param-type">Body Parameter</span> &mdash; The least loop times (0~5)</div>
+    </div>
+    <h4 class="field-label">Responses</h4>
+    <h5 class="field-label response-204">204</h5>
+    <div class="response-desc">Success <a href="#"></a></div>
+    <h5 class="field-label response-400">400</h5>
+    <div class="response-desc">Bad request <a href="#"></a></div>
+  </div>
+  <hr/>
+  <h3><a name="Execution">Execution</a></h3>
+  <div class="method"><a name="execClearPut"/>
+    <div class="method-path">
+    <a class="up" href="#__Methods">&xutri;</a>
+    <pre class="put"><code class="huge"><span class="http-method">put</span> /exec/clear</code></pre></div>
+    <div class="method-notes">Clear the display</div>
+    <h4 class="field-label">Responses</h4>
+    <h5 class="field-label response-204">204</h5>
+    <div class="response-desc">Success <a href="#"></a></div>
+  </div>
+  <hr/>
+  <div class="method"><a name="execDisplayNamePut"/>
+    <div class="method-path">
+    <a class="up" href="#__Methods">&xutri;</a>
+    <pre class="put"><code class="huge"><span class="http-method">put</span> /exec/display/{name}</code></pre></div>
+    <div class="method-notes">Display a pixel art</div>
+    <h4 class="field-label">Path parameters</h4>
+    <div class="field-items">
+      <div class="param">name (required)</div>
+      <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; The name of pixel art</div>
+    </div>
+    <h4 class="field-label">Responses</h4>
+    <h5 class="field-label response-204">204</h5>
+    <div class="response-desc">Success <a href="#"></a></div>
+    <h5 class="field-label response-404">404</h5>
+    <div class="response-desc">Not found <a href="#"></a></div>
+  </div>
+  <hr/>
+  <div class="method"><a name="execDrawPut"/>
+    <div class="method-path">
+    <a class="up" href="#__Methods">&xutri;</a>
+    <pre class="put"><code class="huge"><span class="http-method">put</span> /exec/draw</code></pre></div>
+    <div class="method-notes">Draw pixels on the display</div>
+    <h4 class="field-label">Consumes</h4>
+    <div class="produce-content-type">plain/text</div>
+    <h4 class="field-label">Request body</h4>
+    <div class="field-items">
+      <div class="param">body <a href="#string">string</a> (required)</div>
+      <div class="param-desc"><span class="param-type">Body Parameter</span> &mdash; <p>Base64 encoded binary data of the drawing instruction</p>
+<ul>
+<li>Byte 1~3: The color information (R, G, B).</li>
+<li>Byte 4~: The position to draw pixel (lower 4 bits for X, upper 4 bits for Y).</li>
+</ul>
+</div>
+    </div>
+    <h4 class="field-label">Responses</h4>
+    <h5 class="field-label response-204">204</h5>
+    <div class="response-desc">Success <a href="#"></a></div>
+    <h5 class="field-label response-400">400</h5>
+    <div class="response-desc">Bad request <a href="#"></a></div>
+    <h5 class="field-label response-403">403</h5>
+    <div class="response-desc">Forbidden <a href="#"></a></div>
+  </div>
+  <hr/>
+  <div class="method"><a name="execForwardArtPut"/>
+    <div class="method-path">
+    <a class="up" href="#__Methods">&xutri;</a>
+    <pre class="put"><code class="huge"><span class="http-method">put</span> /exec/forward_art</code></pre></div>
+    <div class="method-notes">Forward to next pixel art</div>
+    <h4 class="field-label">Responses</h4>
+    <h5 class="field-label response-204">204</h5>
+    <div class="response-desc">Success <a href="#"></a></div>
+  </div>
+  <hr/>
+  <div class="method"><a name="execFreezePut"/>
+    <div class="method-path">
+    <a class="up" href="#__Methods">&xutri;</a>
+    <pre class="put"><code class="huge"><span class="http-method">put</span> /exec/freeze</code></pre></div>
+    <div class="method-notes">Freeze the display</div>
+    <h4 class="field-label">Responses</h4>
+    <h5 class="field-label response-204">204</h5>
+    <div class="response-desc">Success <a href="#"></a></div>
+  </div>
+  <hr/>
+  <h3><a name="Others">Others</a></h3>
+  <div class="method"><a name="versionGet"/>
+    <div class="method-path">
+    <a class="up" href="#__Methods">&xutri;</a>
+    <pre class="get"><code class="huge"><span class="http-method">get</span> /version</code></pre></div>
+    <div class="method-notes">Get the firmware version</div>
+    <h4 class="field-label">Produces</h4>
+    <div class="produce-content-type">plain/text</div>
+    <h4 class="field-label">Return type</h4>
+    <div class="return-type">String</div>
+    <h4 class="field-label">Responses</h4>
+    <h5 class="field-label response-200">200</h5>
+    <div class="response-desc">The firmware version <a href="#String">String</a></div>
+  </div>
+  <hr/>
+  <h3><a name="PixelArt">PixelArt</a></h3>
+  <div class="method"><a name="artsGet"/>
+    <div class="method-path">
+    <a class="up" href="#__Methods">&xutri;</a>
+    <pre class="get"><code class="huge"><span class="http-method">get</span> /arts</code></pre></div>
+    <div class="method-notes">Get the name list of pixel arts</div>
+    <h4 class="field-label">Produces</h4>
+    <div class="produce-content-type">plain/text</div>
+    <h4 class="field-label">Return type</h4>
+    <div class="return-type">String</div>
+    <h4 class="field-label">Responses</h4>
+    <h5 class="field-label response-200">200</h5>
+    <div class="response-desc">The name list of pixel arts <a href="#String">String</a></div>
+  </div>
+  <hr/>
+  <div class="method"><a name="artsNameDelete"/>
+    <div class="method-path">
+    <a class="up" href="#__Methods">&xutri;</a>
+    <pre class="delete"><code class="huge"><span class="http-method">delete</span> /arts/{name}</code></pre></div>
+    <div class="method-notes">Delete a pixel art</div>
+    <h4 class="field-label">Path parameters</h4>
+    <div class="field-items">
+      <div class="param">name (required)</div>
+      <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; The name of pixel art</div>
+    </div>
+    <h4 class="field-label">Responses</h4>
+    <h5 class="field-label response-204">204</h5>
+    <div class="response-desc">Success <a href="#"></a></div>
+    <h5 class="field-label response-404">404</h5>
+    <div class="response-desc">Not found <a href="#"></a></div>
+  </div>
+  <hr/>
+  <div class="method"><a name="artsNameGet"/>
+    <div class="method-path">
+    <a class="up" href="#__Methods">&xutri;</a>
+    <pre class="get"><code class="huge"><span class="http-method">get</span> /arts/{name}</code></pre></div>
+    <div class="method-notes">Get data of a pixel art</div>
+    <h4 class="field-label">Path parameters</h4>
+    <div class="field-items">
+      <div class="param">name (required)</div>
+      <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; The name of pixel art</div>
+    </div>
+    <h4 class="field-label">Produces</h4>
+    <div class="produce-content-type">image/gif</div>
+    <h4 class="field-label">Return type</h4>
+    <div class="return-type">Object</div>
+    <h4 class="field-label">Responses</h4>
+    <h5 class="field-label response-200">200</h5>
+    <div class="response-desc">GIF-formatted raw binary data of a pixel art <a href="#Object">Object</a></div>
+    <h5 class="field-label response-404">404</h5>
+    <div class="response-desc">Not found <a href="#"></a></div>
+  </div>
+  <hr/>
+  <div class="method"><a name="artsPost"/>
+    <div class="method-path">
+    <a class="up" href="#__Methods">&xutri;</a>
+    <pre class="post"><code class="huge"><span class="http-method">post</span> /arts</code></pre></div>
+    <div class="method-notes">Upload data of a new pixel art</div>
+    <h4 class="field-label">Consumes</h4>
+    <div class="produce-content-type">multipart/form-data</div>
+    <h4 class="field-label">Form parameters</h4>
+    <div class="field-items">
+      <div class="param">filename (required)</div>
+      <div class="param-desc"><span class="param-type">Form Parameter</span> &mdash; </div>
+      <div class="param">file (required)</div>
+      <div class="param-desc"><span class="param-type">Form Parameter</span> &mdash; </div>
+    </div>
+    <h4 class="field-label">Responses</h4>
+    <h5 class="field-label response-204">204</h5>
+    <div class="response-desc">Success <a href="#"></a></div>
+    <h5 class="field-label response-400">400</h5>
+    <div class="response-desc">Bad request <a href="#"></a></div>
+    <h5 class="field-label response-413">413</h5>
+    <div class="response-desc">Too Large data <a href="#"></a></div>
+    <h5 class="field-label response-507">507</h5>
+    <div class="response-desc">Storage full <a href="#"></a></div>
+  </div>
+  <hr/>
+  <h3><a name="Status">Status</a></h3>
+  <div class="method"><a name="statusCurrentArtGet"/>
+    <div class="method-path">
+    <a class="up" href="#__Methods">&xutri;</a>
+    <pre class="get"><code class="huge"><span class="http-method">get</span> /status/current_art</code></pre></div>
+    <div class="method-notes">Get the name of current displayed pixel art</div>
+    <h4 class="field-label">Produces</h4>
+    <div class="produce-content-type">plain/text</div>
+    <h4 class="field-label">Return type</h4>
+    <div class="return-type">String</div>
+    <h4 class="field-label">Responses</h4>
+    <h5 class="field-label response-200">200</h5>
+    <div class="response-desc">The name of pixel art <a href="#String">String</a></div>
+  </div>
+  <hr/>
+  <div class="method"><a name="statusPixelsGet"/>
+    <div class="method-path">
+    <a class="up" href="#__Methods">&xutri;</a>
+    <pre class="get"><code class="huge"><span class="http-method">get</span> /status/pixels</code></pre></div>
+    <div class="method-notes">Get the pixels data of current displayed image</div>
+    <h4 class="field-label">Produces</h4>
+    <div class="produce-content-type">plain/text</div>
+    <h4 class="field-label">Return type</h4>
+    <div class="return-type">String</div>
+    <h4 class="field-label">Responses</h4>
+    <h5 class="field-label response-200">200</h5>
+    <div class="response-desc"><p>Base64 encoded binary data of the pixels</p>
+<ul>
+<li>It's concatenated pixels starting in the upper left corner, going from left to right, and then row by row going to lower.</li>
+<li>Each pixel consists of 3 bytes (R, G, B), therefore it's always 768 bytes.</li>
+</ul>
+ <a href="#String">String</a></div>
+    <h5 class="field-label response-403">403</h5>
+    <div class="response-desc">Forbidden <a href="#"></a></div>
+  </div>
+  <hr/>
+
+  </body>
+</html>
