@@ -501,7 +501,7 @@ function fetchSettingEach(id, path) {
 	const elm = document.getElementById(id);
 	callApi('GET', path, null, (ret) => {
 		elm.value = ret;
-		elm.defaltValue = ret;
+		elm.defaultValue = ret;
 	});
 	elm.addEventListener('change', () => {
 		const className = 'changed';

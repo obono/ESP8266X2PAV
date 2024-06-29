@@ -11,7 +11,7 @@
 
 //#define DEBUG
 
-#define BUILD_VERSION   "0.0.4"
+#define BUILD_VERSION   "0.0.5"
 #define BUILD_DATETIME  __DATE__ " " __TIME__
 #ifdef DEBUG
 #define BUILD_INFO      BUILD_VERSION "-debug (" BUILD_DATETIME ")"
