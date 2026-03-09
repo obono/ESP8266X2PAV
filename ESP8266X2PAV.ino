@@ -38,7 +38,7 @@ void setup(void)
         IPAddress gateway(STATIC_ADDRESS_GATEWAY);
         IPAddress subnet(STATIC_ADDRESS_SUBNET);
         IPAddress dns(STATIC_ADDRESS_DNS);
-        WiFi.config(staticIP, subnet, gateway, dns);
+        WiFi.config(staticIP, gateway, subnet, dns);
 #endif
         WiFi.begin(STA_SSID, STA_PASSWORD);
         while (WiFi.waitForConnectResult() != WL_CONNECTED) {
